@@ -88,23 +88,19 @@ public final class Admin extends JavaPlugin implements Listener {
         if (e.getInventory().equals(inv)) {
             e.setCancelled(true);
             if (current.getType() == Material.BARRIER) {
-                if (cooldown.containsKey(uuid) && cooldown.get(uuid) <= 1) {
-
-                    p.sendMessage("กูก็งงค่าอิดอกทอง อีเหรี้ย");
-
-
-                }else {
-                    lastSec = cooldown.get(uuid);
-                    now = System.currentTimeMillis();
-                    if (lastSec != null && now - lastSec < intTime) {
-                        p.sendMessage("§cPLEASE WAITING: " + (now - lastSec));
-                        return;
-                    }
-                    p.sendMessage(CC.GREEN + "CLEAR DONE!");
-
-                    p.chat("/clear");
-                    p.closeInventory();
-                    cooldown.put(uuid, now);
+                if (cooldown.containsKey(uuid) && (System.currentTimeMillis() - cooldown.get(uuid)) <= 1000) {
+    p.sendMessage("กูก็งงค่าอิดอกทอง อีเหรี้ย");
+} else {
+    lastSec = cooldown.get(uuid);
+    now = System.currentTimeMillis();
+    if (lastSec != null && now - lastSec < intTime) {
+        p.sendMessage("§cPLEASE WAITING: " + (now - lastSec));
+        return;
+    }
+    p.sendMessage(CC.GREEN + "CLEAR DONE!");
+    p.chat("/clear");
+    p.closeInventory();
+    cooldown.put(uuid, now);
                 }
             }
         }
