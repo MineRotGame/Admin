@@ -42,7 +42,7 @@ public final class Admin extends JavaPlugin implements Listener {
     private FileConfiguration config;
 
 
-    // อ่านเวลา cooldown ของผู้เล่น
+    // READ COOLDOWN PLAYERS
     private void loadCooldowns() {
         if (config.contains("cooldowns")) {
             for (String uuidString : config.getConfigurationSection("cooldowns").getKeys(false)) {
@@ -53,7 +53,7 @@ public final class Admin extends JavaPlugin implements Listener {
         }
     }
 
-    // บันทึกเวลา cooldown ของผู้เล่น
+    // SAVE COOLDOWN PLAYERS
     private void saveCooldowns() {
         for (Map.Entry<UUID, Long> entry : cooldown.entrySet()) {
             config.set("cooldowns." + entry.getKey().toString(), entry.getValue());
