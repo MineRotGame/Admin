@@ -5,6 +5,9 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationOptions;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -16,8 +19,11 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public final class Admin extends JavaPlugin implements Listener {
@@ -32,11 +38,46 @@ public final class Admin extends JavaPlugin implements Listener {
     // INT
     private int intTime = 300; // 5 Minutes
 
+    private File configFile;
+    private FileConfiguration config;
+
+
+    // อ่านเวลา cooldown ของผู้เล่น
+    private void loadCooldowns() {
+        if (config.contains("cooldowns")) {
+            for (String uuidString : config.getConfigurationSection("cooldowns").getKeys(false)) {
+                UUID uuid = UUID.fromString(uuidString);
+                long lastCooldown = config.getLong("cooldowns." + uuidString);
+                cooldown.put(uuid, lastCooldown);
+            }
+        }
+    }
+
+    // บันทึกเวลา cooldown ของผู้เล่น
+    private void saveCooldowns() {
+        for (Map.Entry<UUID, Long> entry : cooldown.entrySet()) {
+            config.set("cooldowns." + entry.getKey().toString(), entry.getValue());
+        }
+        try {
+            config.save(configFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void onEnable() {
         Bukkit.getServer().getPluginManager().registerEvents(this, this);
         Bukkit.getServer().getLogger().info("v1.0");
 
+        // สร้างหรือโหลด config
+        configFile = new File(getDataFolder(), "config.yml");
+        if (!configFile.exists()) {
+            configFile.getParentFile().mkdirs();
+            saveResource("config.yml", false);
+        }
+
+        config = YamlConfiguration.loadConfiguration(configFile);
     }
     // show
 
@@ -83,26 +124,28 @@ public final class Admin extends JavaPlugin implements Listener {
         Player p = (Player) e.getWhoClicked();
         current = e.getCurrentItem();
         uuid = p.getUniqueId();
+        now = System.currentTimeMillis();
 
-        if (current == null) return;
-        if (e.getInventory().equals(inv)) {
-            e.setCancelled(true);
-            if (current.getType() == Material.BARRIER) {
-                if (cooldown.containsKey(uuid) && (System.currentTimeMillis() - cooldown.get(uuid)) <= 1000) {
-    p.sendMessage("กูก็งงค่าอิดอกทอง อีเหรี้ย");
-} else {
-    lastSec = cooldown.get(uuid);
-    now = System.currentTimeMillis();
-    if (lastSec != null && now - lastSec < intTime) {
-        p.sendMessage("§cPLEASE WAITING: " + (now - lastSec));
-        return;
-    }
-    p.sendMessage(CC.GREEN + "CLEAR DONE!");
-    p.chat("/clear");
-    p.closeInventory();
-    cooldown.put(uuid, now);
-                }
+        if (current == null || !e.getInventory().equals(inv)) return;
+
+        e.setCancelled(true);
+        if (current.getType() == Material.BARRIER) {
+            // cooldown
+            if (!cooldown.containsKey(uuid) || now - cooldown.get(uuid) > intTime * 1000) {
+                // กระทำเมื่ออยู่นอก cooldown
+                p.sendMessage(CC.GREEN + "CLEAR DONE!");
+                p.chat("/clear");
+                p.closeInventory();
+                cooldown.put(uuid, now);
+            } else {
+                leftSec = (intTime - (now - cooldown.get(uuid)) / 1000);
+                p.sendMessage("Please wait for cooldown! Time left: " + leftSec + " seconds");
             }
         }
+    }
+
+    @Override
+    public void onDisable() {
+        saveCooldowns();
     }
 }
